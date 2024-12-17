@@ -147,8 +147,5 @@ int main() {
     catch (std::exception& e) {
         std::cerr << "Exception: " << e.what() << "\n";
     }
-
-    //f
-    //fjjfjf
     return 0;
 }
