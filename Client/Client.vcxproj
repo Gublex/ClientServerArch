@@ -21,6 +21,12 @@
   <ItemGroup>
     <ClCompile Include="SimpleClient.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="imap.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="data.txt" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
