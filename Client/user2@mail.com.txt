@@ -1,3 +1,6 @@
 From: user1@mail.com
 Message: Hello, my friend!
 -----------------------------------
+From: user1@mail.com
+Message: vwre
+-----------------------------------

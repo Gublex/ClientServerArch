@@ -2,26 +2,31 @@
 #ifndef IMAP_H
 #define IMAP_H
 
+#include <iostream>
+#include <fstream>
 #include <string>
 #include <boost/asio.hpp>
 
+using boost::asio::ip::tcp;
+
+const int max_length = 1024;
+
 class IMAPClient {
 public:
-    IMAPClient(const std::string& server_ip, int port);
-    ~IMAPClient();
+    // Конструктор
+    IMAPClient();
 
-    bool connect();
-    bool login(const std::string& email, const std::string& password);
-    bool select_mailbox(const std::string& mailbox);
-    void logout();
-    bool send_command(const std::string& command, const std::string& argument = "");
-    std::string receive_response();
+    // Метод для аутентификации пользователя
+    bool authenticate(const std::string& email, const std::string& password);
+
+    // Метод для отправки сообщения на сервер
+    void send_message_to_server(const std::string& message, const std::string& recipient_email);
+
+    // Метод для сохранения сообщения в файл
+    void save_message_to_file(const std::string& recipient_email, const std::string& sender_email, const std::string& message);
 
 private:
-    boost::asio::io_service io_service_;
-    boost::asio::ip::tcp::socket socket_;
-    std::string server_ip_;
-    int port_;
+    boost::asio::io_service io_service_; // Boost IO service для отправки данных
 };
 
 #endif // IMAP_H
