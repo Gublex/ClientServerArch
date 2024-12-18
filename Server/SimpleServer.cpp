@@ -11,7 +11,7 @@ const int max_length = 1024;
 // Класс для обработки сессий клиента
 class Session : public std::enable_shared_from_this<Session> {
 public:
-    Session(tcp::socket socket) : socket_(std::move(socket)) {}
+    Session(tcp::socket socket) : socket_(std::move(socket)), sender_email_("") {}
 
     void start() {
         std::cout << "Client connected.\n";
@@ -46,25 +46,32 @@ private:
         std::string command;
         iss >> command;
 
-        std::string sender_email; // Добавляем переменную для хранения email отправителя
-
         if (command == "AUTH") {
             std::string email, password;
             iss >> email >> password;
-            sender_email = email; // Сохраняем email отправителя при аутентификации
+            sender_email_ = email; // Сохраняем email отправителя при аутентификации
+            std::cout << "Authentication requested for email: " << sender_email_ << "\n";  // Добавляем вывод для отладки
             if (authenticate_user(email, password)) {
-                send_response("AUTH_SUCCESS\n");  // Добавляем символ новой строки
+                send_response("AUTH_SUCCESS\n");
             }
             else {
-                send_response("AUTH_FAILED\n");  // Добавляем символ новой строки
+                send_response("AUTH_FAILED\n");
             }
         }
         else if (command == "MESSAGE") {
+            if (sender_email_.empty()) {
+                std::cout << "Sender email is empty, authentication required!\n";
+                send_response("AUTH_REQUIRED\n");  // Если email пустой, то необходимо выполнить аутентификацию
+                return;
+            }
+
             std::string recipient_email, message;
             iss >> recipient_email;
             std::getline(iss, message);
-            save_message(sender_email, recipient_email, message);  // Передаем email отправителя
-            send_response("MESSAGE_SENT\n");  // Добавляем символ новой строки
+
+            std::cout << "Sender email: " << sender_email_ << "\n";  // Добавляем вывод для отладки
+            save_message(sender_email_, recipient_email, message);  // Передаем email отправителя
+            send_response("MESSAGE_SENT\n");
         }
         else {
             send_response("INVALID_COMMAND\n");  // Добавляем символ новой строки
@@ -89,12 +96,20 @@ private:
     }
 
     void save_message(const std::string& sender_email, const std::string& recipient_email, const std::string& message) {
+        if (sender_email.empty()) {
+            std::cerr << "Error: sender_email is empty!\n";
+            return;
+        }
+
         std::ofstream out_file(recipient_email + ".txt", std::ios::app);
         if (out_file.is_open()) {
             out_file << "From: " << sender_email << "\n";  // Сохраняем email отправителя
             out_file << "Message: " << message << "\n";
             out_file << "-----------------------------------\n";
             std::cout << "Message saved for recipient: " << recipient_email << "\n";
+        }
+        else {
+            std::cerr << "Error opening file for writing.\n";
         }
     }
 
@@ -111,6 +126,7 @@ private:
 
     tcp::socket socket_;
     char data_[max_length];
+    std::string sender_email_; // Сохраняем email отправителя
 };
 
 // Класс сервера
