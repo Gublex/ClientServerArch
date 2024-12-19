@@ -3,15 +3,18 @@
 #include <fstream>
 #include <string>
 #include <memory>
+#include <algorithm>
+#include <map>
 
 using boost::asio::ip::tcp;
 
 const int max_length = 1024;
 
-// Класс для обработки сессий клиента
 class Session : public std::enable_shared_from_this<Session> {
 public:
-    Session(tcp::socket socket) : socket_(std::move(socket)), sender_email_("") {}
+    Session(tcp::socket socket, std::map<std::string, unsigned short>& clientPorts)
+        : socket_(std::move(socket)), sender_email_(""), clientPorts_(clientPorts) {}
+
 
     void start() {
         std::cout << "Client connected.\n";
@@ -20,6 +23,10 @@ public:
 
     tcp::socket& socket() {
         return socket_;
+    }
+
+    unsigned short getPort() const {
+        return socket_.remote_endpoint().port();
     }
 
 private:
@@ -49,9 +56,9 @@ private:
         if (command == "AUTH") {
             std::string email, password;
             iss >> email >> password;
-            sender_email_ = email; // Сохраняем email отправителя при аутентификации
-            std::cout << "Authentication requested for email: " << sender_email_ << "\n";  // Добавляем вывод для отладки
             if (authenticate_user(email, password)) {
+                sender_email_ = email;
+                clientPorts_[sender_email_] = getPort(); // Сохраняем порт после успешной аутентификации
                 send_response("AUTH_SUCCESS\n");
             }
             else {
@@ -61,7 +68,7 @@ private:
         else if (command == "MESSAGE") {
             if (sender_email_.empty()) {
                 std::cout << "Sender email is empty, authentication required!\n";
-                send_response("AUTH_REQUIRED\n");  // Если email пустой, то необходимо выполнить аутентификацию
+                send_response("AUTH_REQUIRED\n");
                 return;
             }
 
@@ -69,15 +76,24 @@ private:
             iss >> recipient_email;
             std::getline(iss, message);
 
-            std::cout << "Sender email: " << sender_email_ << "\n";  // Добавляем вывод для отладки
-            save_message(sender_email_, recipient_email, message);  // Передаем email отправителя
+            std::cout << "Sender email: " << sender_email_ << " (" << getPort() << ")\n";
+            std::cout << "Recipient email: " << recipient_email << " (порт неизвестен до аутентификации)\n"; // Показать порт получателя если он есть.
+
+            // Проверить, есть ли порт получателя в карте.
+            auto it = clientPorts_.find(recipient_email);
+            if (it != clientPorts_.end()) {
+                std::cout << "Recipient port: " << it->second << std::endl;
+            }
+
+            save_message(sender_email_, recipient_email, message);
             send_response("MESSAGE_SENT\n");
         }
         else {
-            send_response("INVALID_COMMAND\n");  // Добавляем символ новой строки
+            send_response("INVALID_COMMAND\n");
         }
-        do_read();  // Ждем следующее сообщение от клиента
+        do_read();
     }
+
 
     bool authenticate_user(const std::string& email, const std::string& password) {
         std::ifstream users_file("users.txt");
@@ -127,19 +143,19 @@ private:
     tcp::socket socket_;
     char data_[max_length];
     std::string sender_email_; // Сохраняем email отправителя
+    std::map<std::string, unsigned short>& clientPorts_;
 };
 
 // Класс сервера
 class Server {
 public:
     Server(boost::asio::io_service& io_service, short port)
-        : acceptor_(io_service, tcp::endpoint(tcp::v4(), port)) {
+        : acceptor_(io_service, tcp::endpoint(tcp::v4(), port)), clientPorts_() {
         start_accept();
     }
-
 private:
     void start_accept() {
-        auto new_session = std::make_shared<Session>(tcp::socket(acceptor_.get_executor()));
+        auto new_session = std::make_shared<Session>(tcp::socket(acceptor_.get_executor()), clientPorts_);
         acceptor_.async_accept(
             new_session->socket(),
             [this, new_session](boost::system::error_code error) {
@@ -152,9 +168,10 @@ private:
                 start_accept();
             });
     }
-
     tcp::acceptor acceptor_;
+    std::map<std::string, unsigned short> clientPorts_;
 };
+
 
 int main() {
     setlocale(0, "");

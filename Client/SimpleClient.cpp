@@ -118,6 +118,7 @@ private:
 };
 
 int main() {
+    setlocale(LC_ALL, "Rus");
     try {
         IMAPClient client("127.0.0.1", 993);
 
@@ -127,17 +128,17 @@ int main() {
 
         std::string email, password, recipient_email, message;
 
-        std::cout << "Enter your email: ";
+        std::cout << "¬ведите ваш email: ";
         std::getline(std::cin, email);
 
-        std::cout << "Enter your password: ";
+        std::cout << "¬ведите ваш пароль: ";
         std::getline(std::cin, password);
 
         if (client.authenticate(email, password)) {
-            std::cout << "Enter recipient email: ";
+            std::cout << "¬ведите email получател€: ";
             std::getline(std::cin, recipient_email);
 
-            std::cout << "Enter your message: ";
+            std::cout << "¬ведите ваше сообщение: ";
             std::getline(std::cin, message);
 
             client.send_message(recipient_email, message);
@@ -152,6 +153,5 @@ int main() {
     catch (...) {
         std::cerr << "An unknown error occurred.\n";
     }
-
     return 0;
 }
